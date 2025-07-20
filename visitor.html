@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Visitor Management</title>
+    <meta charset="UTF-8">
+    <style>
+        body {
+          font-family: Arial, sans-serif;
+          padding: 30px;
+          max-width: 600px;
+          margin: auto;
+          background-color: #f4f4f4;
+        }
+
+        h2, h3 {
+          text-align: center;
+        }
+
+        form {
+          background: #fff;
+          padding: 20px;
+          border-radius: 8px;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+          margin-bottom: 20px;
+        }
+
+        input, .btn {
+          width: 100%;
+          padding: 10px;
+          margin-bottom: 10px;
+          border: 1px solid #ccc;
+          border-radius: 4px;
+        }
+
+        .btn {
+          background-color: #4CAF50;
+          color: white;
+          border: none;
+          cursor: pointer;
+        }
+
+        .btn:hover {
+          background-color: #45a049;
+        }
+
+        .visitor {
+          background: #fff;
+          border-left: 5px solid #4CAF50;
+          padding: 15px;
+          margin-bottom: 10px;
+          border-radius: 6px;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        #searchInput {
+          width: 100%;
+          padding: 10px;
+          margin-bottom: 15px;
+          border-radius: 4px;
+          border: 1px solid #ccc;
+        }
+
+        video, canvas {
+          width: 100%;
+          border-radius: 6px;
+          margin-bottom: 10px;
+        }
+     .host-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.host-register,
+.host-login {
+  background-color: #4CAF50; /* green */
+  padding: 8px 12px;
+  border-radius: 5px;
+}
+
+.host-register a,
+.host-login a {
+  color: white;
+  text-decoration: none;
+  font-weight: bold;
+}
+
+.host-register a:hover,
+.host-login a:hover {
+  text-decoration: underline;
+}
+
+
+    </style>
+</head>
+<body>
+<div class="host-buttons">
+    <div class="host-register">
+        <a href="hostRegister.html">Register as Host</a>
+    </div>
+    <div class="host-login">
+        <a href="hostLogin.html">Host Login</a>
+    </div>
+</div>
+
+
+
+
+<h2>Visitor Registration</h2>
+
+
+
+
+<form id="visitorForm">
+    <input type="text" name="name" placeholder="Name" required>
+    <input type="text" name="email" placeholder="Email" required>
+    <input type="text" name="mobile" placeholder="Mobile" required>
+    <input type="text" name="host" placeholder="Host Employee Name" required>
+    <input type="email" name="hostEmail" placeholder="Host Email" required>
+    <input type="text" id="purpose" name="purpose" placeholder="Purpose of Visit" required />
+    <input type="text" id="organizationName" name="organizationName" placeholder="Organization Name" required />
+
+    <video id="webcam" autoplay></video>
+    <button type="button" class="btn" onclick="capturePhoto()">Capture Photo</button>
+    <canvas id="snapshot" style="display: none;"></canvas>
+    <input type="hidden" name="imageData" id="imageData">
+
+    <button class="btn" type="submit" id="submitBtn" disabled>Register</button>
+</form>
+
+<h3>Currently Checked-In Visitors</h3>
+<input type="text" id="searchInput" placeholder="Search by name or mobile">
+<div id="visitorList"></div>
+
+<script>
+    const API_BASE = 'http://localhost:4567';
+
+
+
+    // Initialize webcam
+    const webcam = document.getElementById('webcam');
+    const canvas = document.getElementById('snapshot');
+    const imageDataInput = document.getElementById('imageData');
+    const submitBtn = document.getElementById('submitBtn');
+
+    navigator.mediaDevices.getUserMedia({ video: true })
+      .then(stream => webcam.srcObject = stream)
+      .catch(err => alert('Camera access denied or not supported.'));
+
+    function capturePhoto() {
+      const context = canvas.getContext('2d');
+      canvas.width = webcam.videoWidth;
+      canvas.height = webcam.videoHeight;
+      context.drawImage(webcam, 0, 0, canvas.width, canvas.height);
+      const imageDataURL = canvas.toDataURL('image/jpeg');
+      imageDataInput.value = imageDataURL;
+      submitBtn.disabled = false;
+      alert("Photo captured successfully!");
+    }
+
+    async function loadVisitors() {
+      try {
+        const res = await fetch(`${API_BASE}/api/visitors`);
+        const data = await res.json();
+        const listContainer = document.getElementById('visitorList');
+        const searchQuery = document.getElementById('searchInput').value.toLowerCase().trim();
+
+        listContainer.innerHTML = '';
+
+        const filteredVisitors = data
+          .filter(v => v.approved === true && !v.logoutTime)
+          .filter(v => {
+            const name = (v.name || '').toLowerCase();
+            const mobile = (v.mobile || '').toLowerCase();
+            return name.includes(searchQuery) || mobile.includes(searchQuery);
+          });
+const today = new Date().toISOString().slice(0, 10);
+        if (filteredVisitors.length === 0) {
+          listContainer.innerHTML = '<p>No matching visitors found.</p>';
+          return;
+        }
+
+
+
+        filteredVisitors.forEach(visitor => {
+          const div = document.createElement('div');
+          div.className = 'visitor';
+          div.innerHTML = `
+            <strong>${visitor.name}</strong><br>
+            Email: ${visitor.email}<br>
+            Mobile: ${visitor.mobile}<br>
+           Organization: ${visitor.organizationName || "Not Available"}<br>
+
+
+            Host: ${visitor.host}<br>
+            Checked in: ${visitor.timestamp || 'Not Available'}<br>
+
+            ${visitor.imageData ? `<img src="${visitor.imageData}" alt="Visitor Photo" style="width:100px;height:auto;border-radius:4px;margin-top:5px;">` : ''}
+${visitor.qrCode ? `<br><img src="${visitor.qrCode}" alt="QR Code" style="width:180px;height:auto;border-radius:4px;margin-top:10px;">` : ''}
+
+            <br>
+
+            <button class="btn" onclick="logoutVisitor('${visitor.mobile}')">Logout</button>
+          `;
+          listContainer.appendChild(div);
+        });
+      } catch (err) {
+        console.error('Error loading visitors:', err);
+      }
+    }
+
+    async function logoutVisitor(mobile) {
+      try {
+        await fetch(`${API_BASE}/api/visitor/logout?mobile=${mobile}`, {
+          method: 'POST'
+        });
+        loadVisitors();
+      } catch (err) {
+        console.error('Logout failed:', err);
+      }
+    }
+
+    document.getElementById('visitorForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const formData = new FormData(e.target);
+      const visitor = Object.fromEntries(formData.entries());
+
+      if (!visitor.imageData) {
+        alert("Please capture a photo before submitting.");
+        return;
+      }
+
+      try {
+        await fetch(`${API_BASE}/api/visitor/request`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(visitor)
+        });
+        alert('Registration request sent. Awaiting host approval.');
+        e.target.reset();
+        imageDataInput.value = '';
+        submitBtn.disabled = true;
+        loadVisitors();
+      } catch (err) {
+        console.error('Registration failed:', err);
+      }
+    });
+
+    document.getElementById('searchInput').addEventListener('input', loadVisitors);
+
+    window.onload = loadVisitors;
+    function goToHostDashboard() {
+  window.location.href = "host.html"; // assuming host.html is in the same folder
+}
+
+</script>
+
+</body>
+</html>
+
