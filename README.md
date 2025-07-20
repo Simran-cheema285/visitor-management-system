@@ -67,9 +67,9 @@ Hosts can also **pre-approve** visitors before the visit:
 ---
 
 ## 📁 Project Structure
-frontend/ ├─ index.html ├─ hostLogin.html ├─ hostRegister.html ├─ host.html ├─ style.css |-script.js
+frontend/ ├─ visitor.html(includes styling and js code) ├─ hostLogin.html ├─ hostRegister.html ├─ host.html(includes styling and js code)
 
-backend/ ├─ App.java ├─ Visitor.java ├─ VisitorService.java ├─ Host.java ├─ QRGenerator.java ├─ visitors.json ├─ pendingvisitors.json |-hosts.json
+backend/ ├─ App.java (contains api)├─ Visitor.java ├─ VisitorService.java ├─ Host.java ├─ QRGenerator.java ├─ visitors.json ├─ pendingvisitors.json |-hosts.json
 
 ---
 
